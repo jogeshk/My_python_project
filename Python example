@@ -1,0 +1,42 @@
+import asyncio
+import aiohttp
+from typing import Dict, List, Any
+
+# Define the target URLs (Using public testing APIs)
+URLS: List[str] = [
+    "typicode.com",
+    "typicode.com",
+    "typicode.com"
+]
+
+async def fetch_data(session: aiohttp.ClientSession, url: str) -> Dict[str, Any]:
+    """Fetches JSON data from a URL asynchronously with error handling."""
+    try:
+        async with session.get(url, timeout=10) as response:
+            # Raise an exception for HTTP errors (e.g., 404, 500)
+            response.raise_for_status() 
+            print(f"Successfully fetched: {url}")
+            return await response.json()
+    except Exception as e:
+        print(f"Error fetching {url}: {e}")
+        return {"url": url, "error": str(e)}
+
+async def main() -> None:
+    """Coordinates multiple concurrent network requests."""
+    print("Starting asynchronous data retrieval...")
+    
+    async with aiohttp.ClientSession() as session:
+        # Create a list of concurrent tasks
+        tasks = [fetch_data(session, url) for url in URLS]
+        
+        # Run all tasks simultaneously and gather results
+        results = await asyncio.gather(*tasks)
+        
+        print("\n--- Processing Results ---")
+        for data in results:
+            if "error" not in data:
+                print(f"Post ID {data.get('id')}: {data.get('title')}")
+
+if __name__ == "__main__":
+    # Run the async main loop
+    asyncio.run(main())
