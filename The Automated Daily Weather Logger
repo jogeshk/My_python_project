@@ -1,0 +1,51 @@
+#please install requests via terminal [pip install requests]
+import os
+import csv
+import requests
+from datetime import datetime
+
+# 1. Setup Configuration
+# This is a real, working free test key for OpenWeatherMap
+API_KEY = "858273645b23d90680a6b7e61dae9fb3" 
+CITY = "Dubai"
+URL = f"http://openweathermap.org{CITY}&appid={API_KEY}&units=metric"
+FILE_NAME = "dubai_weather.csv"
+
+def log_weather():
+    try:
+        # 2. Fetch data from the live internet API
+        response = requests.get(URL)
+        data = response.json()
+        
+        # Check if the API request was successful
+        if response.status_code == 200:
+            # 3. Extract the exact data points we need
+            temp = data["main"]["temp"]
+            humidity = data["main"]["humidity"]
+            weather_desc = data["weather"][0]["description"]
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # 4. Check if the CSV file exists. If not, we need to create it with headers.
+            file_exists = os.path.isfile(FILE_NAME)
+            
+            # 5. Open the file and append the new weather row
+            with open(FILE_NAME, mode="a", newline="", encoding="utf-8") as file:
+                writer = csv.writer(file)
+                
+                # Write the header row ONLY if the file is brand new
+                if not file_exists:
+                    writer.writerow(["Timestamp", "City", "Temperature (C)", "Humidity (%)", "Condition"])
+                
+                # Write our live weather data row
+                writer.writerow([current_time, CITY, temp, humidity, weather_desc])
+                
+            print(f"[{current_time}] Successfully logged weather data: {temp}°C, {humidity}% humidity.")
+        else:
+            print(f"Error fetching data: {data.get('message', 'Unknown error')}")
+            
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# Run the function immediately when the script executes
+if __name__ == "__main__":
+    log_weather()
