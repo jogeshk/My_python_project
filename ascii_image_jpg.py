@@ -1,63 +1,73 @@
-import cv2
 import os
 import sys
-import glob
+import time
 
-# Detailed characters for smooth image transitions
-ASCII_CHARS = " .'`^\",:;Il!i><~+_-?][}{1)(|\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$"
+# --- AUTOMATIC LIBRARY INSTALLER ---
+try:
+    import cv2
+except ImportError:
+    print("OpenCV not found. Downloading and installing 'opencv-python'...")
+    import subprocess
+    # Runs the pip install command silently in the background
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "opencv-python"])
+    import cv2
+    print("Installation complete!\n")
+
+# Ask the user for the image file name
+IMAGE_FILE = input("The image must be in the same folder. Name of the image (e.g., photo.jpg): ")
+ASCII_CHARS = " .:-=+*%%@@##"
 
 def main():
-    # Automatically search the current folder for any .jpg file
-    jpg_files = glob.glob("*.jpg")
+    if not os.path.exists(IMAGE_FILE):
+        print(f"Error: Could not find '{IMAGE_FILE}'")
+        return
+
+    # Load the static image file
+    frame = cv2.imread(IMAGE_FILE)
+    if frame is None:
+        print("Error: Could not decode the image file. Ensure it is a valid image format.")
+        return
     
-    if not jpg_files:
-        print("Error: Could not find any .jpg images in this folder!")
-        print("Make sure your image is saved in the exact same folder as this script.")
-        return
-        
-    # Select the first JPG image found
-    image_file = jpg_files[0]
-    print(f"Loading image: {image_file}...\n")
-
-    img = cv2.imread(image_file)
-    if img is None:
-        print("Error: Could not read or open the image file.")
-        return
-
-    # Turn on Windows ANSI styling and clear screen
     os.system("")
     os.system("cls")
 
-    # Set up resolution scaling boundaries
-    target_width = 160
-    h_orig, w_orig = img.shape[:2]
-    aspect = h_orig / float(w_orig)
-    target_height = int(target_width * aspect * 0.52) # Compresses vertical height for text rows
-    
-    resized_img = cv2.resize(img, (target_width, target_height))
-    gray_img = cv2.cvtColor(resized_img, cv2.COLOR_BGR2GRAY)
-
     num_chars = len(ASCII_CHARS)
-    output_lines = []
 
-    # Loop through the image pixels to apply colors and shapes
-    for y in range(target_height):
-        line_chars = []
-        for x in range(target_width):
-            brightness = gray_img[y, x]
-            char_idx = int(brightness / 256 * num_chars)
-            char = ASCII_CHARS[char_idx]
+    # Resolution settings for large screen layout
+    TARGET_WIDTH = 240
+    TARGET_HEIGHT = 65
 
-            # Read RGB channels
-            b, g, r = resized_img[y, x]
+    # 1. Downsize resolution to the new larger target dimensions
+    resized_frame = cv2.resize(frame, (TARGET_WIDTH, TARGET_HEIGHT))
+    height, width, _ = resized_frame.shape
+    gray_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2GRAY)
 
-            # Embed TrueColor color tags
-            line_chars.append(f"\033[38;2;{r};{g};{b}m{char}")
-        
-        output_lines.append("".join(line_chars))
+    # 2. Compile lines manually using the optimized loop configuration
+    output = []
+    for y in range(height):
+        line = []
+        for x in range(width):
+            brightness = gray_frame[y, x]
+            char = ASCII_CHARS[(int(brightness) * num_chars) // 256]
+            b, g, r = resized_frame[y, x]
+            
+            line.append(f"\033[38;2;{r};{g};{b}m{char}")
+        output.append("".join(line))
+    
+    # 3. Print the static frame block once
+    sys.stdout.write("\033[1;1H" + "\n".join(output))
+    sys.stdout.flush()
 
-    # Output the final image directly onto the terminal screen
-    sys.stdout.write("\n".join(output_lines) + "\033[0m\n")
+    print("\033[0m\n\nImage rendered successfully! Press Ctrl + C to close.")
+
+    # Keep the program running so the terminal doesn't close immediately
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        print("\033[0m\nDone!")
 
 if __name__ == "__main__":
     main()
